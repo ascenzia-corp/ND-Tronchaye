@@ -2,6 +2,8 @@ node_modules/
 dist/
 client/dist/
 server/db/database.sqlite
+server/db/database.sqlite-shm
+server/db/database.sqlite-wal
 .env
 *.log
 .DS_Store

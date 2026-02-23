@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { getDb } from '../db/schema.js';
 import { requireAuth } from '../middleware/auth.js';
+import { sendContactNotification } from '../lib/mailer.js';
 
 const router = Router();
 
@@ -33,6 +34,10 @@ router.post('/', (req, res) => {
 
   const msg = db.prepare('SELECT * FROM contactMessages WHERE id = ?').get(result.lastInsertRowid);
   res.status(201).json(mapMessage(msg as Record<string, unknown>));
+
+  // Envoi de la notification email en arrière-plan (ne bloque pas la réponse)
+  sendContactNotification({ name: name.trim(), email: email.trim(), subject: subject.trim(), message: message.trim() })
+    .catch((err) => console.error('[mailer] Erreur envoi notification:', err));
 });
 
 // Admin: list all messages
