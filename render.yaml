@@ -1,0 +1,25 @@
+services:
+  - type: web
+    name: nd-tronchaye-api
+    runtime: node
+    buildCommand: npm install
+    startCommand: NODE_ENV=production npx tsx server/index.ts
+    envVars:
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: FRONTEND_URL
+        sync: false
+      - key: ADMIN_EMAIL
+        sync: false
+      - key: ADMIN_PASSWORD_HASH
+        sync: false
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        sync: false
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
+      - key: NOTIFY_EMAIL
+        sync: false
