@@ -1,11 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Calendar, MapPin, Clock, Star } from 'lucide-react';
-import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+import { Calendar, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import EventCard, { EventCardSkeleton } from '@/components/EventCard';
 import { getEvents } from '@/lib/api';
-import { formatDate } from '@/lib/utils';
 import { useScrollAnimation } from '@/hooks/useScrollAnimation';
 import type { Event } from '@/types';
 
@@ -16,7 +14,7 @@ export default function EventsCalendar() {
 
   useEffect(() => {
     getEvents()
-      .then(setEvents)
+      .then((data) => setEvents(data.slice(0, 3)))
       .catch(console.error)
       .finally(() => setLoading(false));
   }, []);
@@ -35,52 +33,31 @@ export default function EventsCalendar() {
         </div>
 
         {loading ? (
-          <div className="text-center text-muted-foreground py-8">Chargement des événements...</div>
-        ) : events.length === 0 ? (
-          <div className="text-center text-muted-foreground py-8">Aucun événement à venir pour le moment.</div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
-            {events.map((event) => (
-              <Card key={event.id} className="overflow-hidden hover:shadow-lg transition-shadow duration-200">
-                <CardContent className="p-6">
-                  <div className="flex items-start justify-between mb-3">
-                    <h3 className="font-serif text-xl font-semibold text-foreground pr-2">
-                      {event.title}
-                    </h3>
-                    {event.isSpecial && (
-                      <Badge variant="burgundy" className="shrink-0 flex items-center gap-1">
-                        <Star className="h-3 w-3" />
-                        Temps fort
-                      </Badge>
-                    )}
-                  </div>
-
-                  <div className="flex flex-col gap-2 mb-4 text-sm text-muted-foreground">
-                    <div className="flex items-center gap-2">
-                      <Calendar className="h-4 w-4 text-sanctuary-accent" />
-                      <span>{formatDate(event.date)}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Clock className="h-4 w-4 text-sanctuary-accent" />
-                      <span>{event.time}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <MapPin className="h-4 w-4 text-sanctuary-accent" />
-                      <span>{event.location}</span>
-                    </div>
-                  </div>
-
-                  <p className="text-sm text-muted-foreground line-clamp-3 mb-4">
-                    {event.description}
-                  </p>
-
-                  <Button asChild variant="outline" size="sm">
-                    <Link to={`/event/${event.id}`}>Voir le détail</Link>
-                  </Button>
-                </CardContent>
-              </Card>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
+            {[1, 2, 3].map((i) => (
+              <EventCardSkeleton key={i} />
             ))}
           </div>
+        ) : events.length === 0 ? (
+          <div className="text-center text-muted-foreground py-8">
+            Aucun événement à venir pour le moment.
+          </div>
+        ) : (
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
+              {events.map((event) => (
+                <EventCard key={event.id} event={event} />
+              ))}
+            </div>
+
+            <div className="text-center mt-10">
+              <Button asChild variant="outline" size="lg">
+                <Link to="/evenements" className="gap-2">
+                  Voir tous les événements <ArrowRight className="h-4 w-4" />
+                </Link>
+              </Button>
+            </div>
+          </>
         )}
       </div>
     </section>

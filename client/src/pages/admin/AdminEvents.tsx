@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Pencil, Trash2 } from 'lucide-react';
+import { Plus, Pencil, Trash2, ArrowUpDown } from 'lucide-react';
 import { toast } from 'sonner';
 import { AdminLayout } from './AdminDashboard';
 import { Button } from '@/components/ui/button';
@@ -16,7 +16,14 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { getEvents, createEvent, updateEvent, deleteEvent, getUser } from '@/lib/api';
-import type { Event } from '@/types';
+import type { Event, EventType } from '@/types';
+
+const eventTypeLabels: Record<EventType, string> = {
+  regular: 'Régulier',
+  special: 'Spécial',
+  liturgical: 'Liturgique',
+  cultural: 'Culturel',
+};
 
 interface EventFormData {
   title: string;
@@ -25,6 +32,8 @@ interface EventFormData {
   location: string;
   description: string;
   isSpecial: boolean;
+  imageUrl: string;
+  eventType: EventType;
 }
 
 const emptyForm: EventFormData = {
@@ -34,7 +43,14 @@ const emptyForm: EventFormData = {
   location: '',
   description: '',
   isSpecial: false,
+  imageUrl: '',
+  eventType: 'regular',
 };
+
+type StatusFilter = 'all' | 'upcoming' | 'past';
+type SortDir = 'asc' | 'desc';
+
+const ITEMS_PER_PAGE = 10;
 
 export default function AdminEvents() {
   const navigate = useNavigate();
@@ -46,6 +62,12 @@ export default function AdminEvents() {
   const [deletingEvent, setDeletingEvent] = useState<Event | null>(null);
   const [formData, setFormData] = useState<EventFormData>(emptyForm);
   const [submitting, setSubmitting] = useState(false);
+
+  // Filters
+  const [typeFilter, setTypeFilter] = useState<EventType | 'all'>('all');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+  const [sortDir, setSortDir] = useState<SortDir>('asc');
+  const [page, setPage] = useState(1);
 
   useEffect(() => {
     document.title = 'Gestion des événements | Admin';
@@ -90,6 +112,8 @@ export default function AdminEvents() {
       location: event.location,
       description: event.description,
       isSpecial: event.isSpecial,
+      imageUrl: event.imageUrl || '',
+      eventType: event.eventType || 'regular',
     });
     setDialogOpen(true);
   }
@@ -104,14 +128,18 @@ export default function AdminEvents() {
     setSubmitting(true);
 
     try {
+      const payload = {
+        ...formData,
+        imageUrl: formData.imageUrl || undefined,
+      };
       if (editingEvent) {
-        const updated = await updateEvent(editingEvent.id, formData);
+        const updated = await updateEvent(editingEvent.id, payload);
         setEvents((prev) =>
           prev.map((ev) => (ev.id === editingEvent.id ? updated : ev))
         );
         toast.success('Événement modifié avec succès');
       } else {
-        const created = await createEvent(formData);
+        const created = await createEvent(payload as Parameters<typeof createEvent>[0]);
         setEvents((prev) => [...prev, created]);
         toast.success('Événement créé avec succès');
       }
@@ -146,7 +174,24 @@ export default function AdminEvents() {
     }
   }
 
-  function formatDate(dateStr: string) {
+  const now = new Date(new Date().toDateString());
+
+  const filteredEvents = events
+    .filter((e) => {
+      if (typeFilter !== 'all' && e.eventType !== typeFilter) return false;
+      if (statusFilter === 'upcoming' && new Date(e.date) < now) return false;
+      if (statusFilter === 'past' && new Date(e.date) >= now) return false;
+      return true;
+    })
+    .sort((a, b) => {
+      const diff = new Date(a.date).getTime() - new Date(b.date).getTime();
+      return sortDir === 'asc' ? diff : -diff;
+    });
+
+  const totalPages = Math.ceil(filteredEvents.length / ITEMS_PER_PAGE);
+  const paginatedEvents = filteredEvents.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
+
+  function formatDateDisplay(dateStr: string) {
     return new Date(dateStr).toLocaleDateString('fr-FR', {
       day: 'numeric',
       month: 'long',
@@ -170,100 +215,145 @@ export default function AdminEvents() {
           </Button>
         </div>
 
+        {/* Filters */}
+        <div className="flex flex-wrap gap-3 items-center">
+          <div className="flex gap-1">
+            <span className="text-sm text-muted-foreground self-center mr-1">Type :</span>
+            {(['all', 'regular', 'special', 'liturgical', 'cultural'] as const).map((t) => (
+              <Button
+                key={t}
+                variant={typeFilter === t ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => { setTypeFilter(t); setPage(1); }}
+              >
+                {t === 'all' ? 'Tous' : eventTypeLabels[t]}
+              </Button>
+            ))}
+          </div>
+          <div className="h-6 w-px bg-border" />
+          <div className="flex gap-1">
+            <span className="text-sm text-muted-foreground self-center mr-1">Statut :</span>
+            {(['all', 'upcoming', 'past'] as StatusFilter[]).map((s) => (
+              <Button
+                key={s}
+                variant={statusFilter === s ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => { setStatusFilter(s); setPage(1); }}
+              >
+                {s === 'all' ? 'Tous' : s === 'upcoming' ? 'À venir' : 'Passés'}
+              </Button>
+            ))}
+          </div>
+          <div className="h-6 w-px bg-border" />
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setSortDir((d) => d === 'asc' ? 'desc' : 'asc')}
+          >
+            <ArrowUpDown className="h-4 w-4 mr-1" />
+            Date {sortDir === 'asc' ? '↑' : '↓'}
+          </Button>
+        </div>
+
         {loading ? (
           <div className="flex items-center justify-center py-12 text-muted-foreground">
             Chargement...
           </div>
-        ) : events.length === 0 ? (
+        ) : paginatedEvents.length === 0 ? (
           <div className="text-center py-12 text-muted-foreground">
-            Aucun événement pour le moment.
+            Aucun événement correspondant.
           </div>
         ) : (
-          <div className="rounded-md border bg-card">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b bg-muted/50">
-                  <th className="text-left p-4 font-medium text-muted-foreground">
-                    Titre
-                  </th>
-                  <th className="text-left p-4 font-medium text-muted-foreground">
-                    Date
-                  </th>
-                  <th className="text-left p-4 font-medium text-muted-foreground">
-                    Heure
-                  </th>
-                  <th className="text-left p-4 font-medium text-muted-foreground">
-                    Lieu
-                  </th>
-                  <th className="text-left p-4 font-medium text-muted-foreground">
-                    Spécial
-                  </th>
-                  <th className="text-right p-4 font-medium text-muted-foreground">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {events.map((event) => (
-                  <tr
-                    key={event.id}
-                    className="border-b last:border-b-0 hover:bg-muted/30 transition-colors"
-                  >
-                    <td className="p-4 font-medium">{event.title}</td>
-                    <td className="p-4 text-sm text-muted-foreground">
-                      {formatDate(event.date)}
-                    </td>
-                    <td className="p-4 text-sm text-muted-foreground">
-                      {event.time}
-                    </td>
-                    <td className="p-4 text-sm text-muted-foreground">
-                      {event.location}
-                    </td>
-                    <td className="p-4">
-                      {event.isSpecial ? (
-                        <Badge variant="secondary">Spécial</Badge>
-                      ) : (
-                        <span className="text-sm text-muted-foreground">
-                          --
-                        </span>
-                      )}
-                    </td>
-                    <td className="p-4 text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => openEditDialog(event)}
-                          title="Modifier"
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => openDeleteDialog(event)}
-                          title="Supprimer"
-                          className="text-destructive hover:text-destructive"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </td>
+          <>
+            <div className="rounded-md border bg-card">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b bg-muted/50">
+                    <th className="text-left p-4 font-medium text-muted-foreground">Titre</th>
+                    <th className="text-left p-4 font-medium text-muted-foreground">Date</th>
+                    <th className="text-left p-4 font-medium text-muted-foreground">Heure</th>
+                    <th className="text-left p-4 font-medium text-muted-foreground">Lieu</th>
+                    <th className="text-left p-4 font-medium text-muted-foreground">Type</th>
+                    <th className="text-left p-4 font-medium text-muted-foreground">Spécial</th>
+                    <th className="text-right p-4 font-medium text-muted-foreground">Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {paginatedEvents.map((event) => (
+                    <tr
+                      key={event.id}
+                      className="border-b last:border-b-0 hover:bg-muted/30 transition-colors"
+                    >
+                      <td className="p-4 font-medium">{event.title}</td>
+                      <td className="p-4 text-sm text-muted-foreground">
+                        {formatDateDisplay(event.date)}
+                      </td>
+                      <td className="p-4 text-sm text-muted-foreground">{event.time}</td>
+                      <td className="p-4 text-sm text-muted-foreground">{event.location}</td>
+                      <td className="p-4">
+                        <Badge variant="outline" className="text-xs">
+                          {eventTypeLabels[event.eventType] || 'Régulier'}
+                        </Badge>
+                      </td>
+                      <td className="p-4">
+                        {event.isSpecial ? (
+                          <Badge variant="secondary">Spécial</Badge>
+                        ) : (
+                          <span className="text-sm text-muted-foreground">--</span>
+                        )}
+                      </td>
+                      <td className="p-4 text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <Button variant="ghost" size="sm" onClick={() => openEditDialog(event)} title="Modifier">
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost" size="sm" onClick={() => openDeleteDialog(event)} title="Supprimer"
+                            className="text-destructive hover:text-destructive"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="flex justify-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={page === 1}
+                  onClick={() => setPage((p) => p - 1)}
+                >
+                  Précédent
+                </Button>
+                <span className="flex items-center text-sm text-muted-foreground px-2">
+                  Page {page} / {totalPages}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={page === totalPages}
+                  onClick={() => setPage((p) => p + 1)}
+                >
+                  Suivant
+                </Button>
+              </div>
+            )}
+          </>
         )}
 
         {/* Create / Edit dialog */}
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogContent className="sm:max-w-lg">
+          <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>
-                {editingEvent
-                  ? 'Modifier l\'événement'
-                  : 'Ajouter un événement'}
+                {editingEvent ? "Modifier l'événement" : 'Ajouter un événement'}
               </DialogTitle>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -272,9 +362,7 @@ export default function AdminEvents() {
                 <Input
                   id="event-title"
                   value={formData.title}
-                  onChange={(e) =>
-                    setFormData((prev) => ({ ...prev, title: e.target.value }))
-                  }
+                  onChange={(e) => setFormData((prev) => ({ ...prev, title: e.target.value }))}
                   placeholder="Titre de l'événement"
                   required
                 />
@@ -287,9 +375,7 @@ export default function AdminEvents() {
                     id="event-date"
                     type="date"
                     value={formData.date}
-                    onChange={(e) =>
-                      setFormData((prev) => ({ ...prev, date: e.target.value }))
-                    }
+                    onChange={(e) => setFormData((prev) => ({ ...prev, date: e.target.value }))}
                     required
                   />
                 </div>
@@ -298,9 +384,7 @@ export default function AdminEvents() {
                   <Input
                     id="event-time"
                     value={formData.time}
-                    onChange={(e) =>
-                      setFormData((prev) => ({ ...prev, time: e.target.value }))
-                    }
+                    onChange={(e) => setFormData((prev) => ({ ...prev, time: e.target.value }))}
                     placeholder="ex: 10h30"
                     required
                   />
@@ -312,12 +396,7 @@ export default function AdminEvents() {
                 <Input
                   id="event-location"
                   value={formData.location}
-                  onChange={(e) =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      location: e.target.value,
-                    }))
-                  }
+                  onChange={(e) => setFormData((prev) => ({ ...prev, location: e.target.value }))}
                   placeholder="Lieu de l'événement"
                   required
                 />
@@ -328,50 +407,73 @@ export default function AdminEvents() {
                 <Textarea
                   id="event-description"
                   value={formData.description}
-                  onChange={(e) =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      description: e.target.value,
-                    }))
-                  }
+                  onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value }))}
                   placeholder="Description de l'événement"
                   rows={3}
                 />
               </div>
 
-              <div className="flex items-center gap-2">
-                <input
-                  id="event-special"
-                  type="checkbox"
-                  checked={formData.isSpecial}
-                  onChange={(e) =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      isSpecial: e.target.checked,
-                    }))
-                  }
-                  className="h-4 w-4 rounded border-input text-primary focus:ring-primary"
+              <div className="space-y-2">
+                <Label htmlFor="event-type">Type d'événement</Label>
+                <select
+                  id="event-type"
+                  value={formData.eventType}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, eventType: e.target.value as EventType }))}
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                >
+                  {Object.entries(eventTypeLabels).map(([value, label]) => (
+                    <option key={value} value={value}>{label}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="event-image">URL de l'image (optionnel)</Label>
+                <Input
+                  id="event-image"
+                  value={formData.imageUrl}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, imageUrl: e.target.value }))}
+                  placeholder="https://... ou /images/..."
                 />
-                <Label htmlFor="event-special" className="cursor-pointer">
+                {formData.imageUrl && (
+                  <div className="mt-2 rounded-md overflow-hidden border bg-muted">
+                    <img
+                      src={formData.imageUrl}
+                      alt="Aperçu"
+                      className="w-full h-32 object-cover"
+                      onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                    />
+                  </div>
+                )}
+              </div>
+
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={formData.isSpecial}
+                  onClick={() => setFormData((prev) => ({ ...prev, isSpecial: !prev.isSpecial }))}
+                  className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors ${
+                    formData.isSpecial ? 'bg-primary' : 'bg-input'
+                  }`}
+                >
+                  <span
+                    className={`pointer-events-none block h-5 w-5 rounded-full bg-white shadow-lg ring-0 transition-transform ${
+                      formData.isSpecial ? 'translate-x-5' : 'translate-x-0'
+                    }`}
+                  />
+                </button>
+                <Label className="cursor-pointer" onClick={() => setFormData((prev) => ({ ...prev, isSpecial: !prev.isSpecial }))}>
                   Événement spécial (mis en avant sur le site)
                 </Label>
               </div>
 
               <DialogFooter>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setDialogOpen(false)}
-                  disabled={submitting}
-                >
+                <Button type="button" variant="outline" onClick={() => setDialogOpen(false)} disabled={submitting}>
                   Annuler
                 </Button>
                 <Button type="submit" disabled={submitting}>
-                  {submitting
-                    ? 'Enregistrement...'
-                    : editingEvent
-                      ? 'Modifier'
-                      : 'Créer'}
+                  {submitting ? 'Enregistrement...' : editingEvent ? 'Modifier' : 'Créer'}
                 </Button>
               </DialogFooter>
             </form>
@@ -386,24 +488,13 @@ export default function AdminEvents() {
             </DialogHeader>
             <p className="text-sm text-muted-foreground">
               Êtes-vous sûr de vouloir supprimer l'événement{' '}
-              <strong>{deletingEvent?.title}</strong> ? Cette action est
-              irréversible.
+              <strong>{deletingEvent?.title}</strong> ? Cette action est irréversible.
             </p>
             <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setDeleteDialogOpen(false)}
-                disabled={submitting}
-              >
+              <Button type="button" variant="outline" onClick={() => setDeleteDialogOpen(false)} disabled={submitting}>
                 Annuler
               </Button>
-              <Button
-                type="button"
-                variant="destructive"
-                onClick={handleDelete}
-                disabled={submitting}
-              >
+              <Button type="button" variant="destructive" onClick={handleDelete} disabled={submitting}>
                 {submitting ? 'Suppression...' : 'Supprimer'}
               </Button>
             </DialogFooter>

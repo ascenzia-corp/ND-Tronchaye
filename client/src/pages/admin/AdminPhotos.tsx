@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Upload, Trash2, Pencil, Image } from 'lucide-react';
+import { Upload, Trash2, Pencil, Image, ArrowUp, ArrowDown } from 'lucide-react';
 import { toast } from 'sonner';
 import { AdminLayout } from './AdminDashboard';
 import { Button } from '@/components/ui/button';
@@ -89,7 +89,6 @@ export default function AdminPhotos() {
       setPhotos((prev) => [...prev, newPhoto]);
       toast.success('Photo ajoutée avec succès');
 
-      // Reset upload form
       setSelectedFile(null);
       setUploadAlt('');
       setUploadCaption('');
@@ -161,6 +160,29 @@ export default function AdminPhotos() {
     }
   }
 
+  async function handleReorder(photo: Photo, direction: 'up' | 'down') {
+    const currentIndex = photos.findIndex((p) => p.id === photo.id);
+    const swapIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
+    if (swapIndex < 0 || swapIndex >= photos.length) return;
+
+    const otherPhoto = photos[swapIndex];
+    try {
+      await Promise.all([
+        updatePhoto(photo.id, { order: otherPhoto.order }),
+        updatePhoto(otherPhoto.id, { order: photo.order }),
+      ]);
+
+      setPhotos((prev) => {
+        const next = [...prev];
+        next[currentIndex] = { ...otherPhoto, order: photo.order };
+        next[swapIndex] = { ...photo, order: otherPhoto.order };
+        return next;
+      });
+    } catch {
+      toast.error("Erreur lors du réordonnancement");
+    }
+  }
+
   return (
     <AdminLayout>
       <div className="space-y-8">
@@ -225,8 +247,10 @@ export default function AdminPhotos() {
 
         {/* Photos grid */}
         {loading ? (
-          <div className="flex items-center justify-center py-12 text-muted-foreground">
-            Chargement...
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="aspect-square rounded-lg bg-muted animate-pulse" />
+            ))}
           </div>
         ) : photos.length === 0 ? (
           <div className="text-center py-12 text-muted-foreground">
@@ -235,24 +259,40 @@ export default function AdminPhotos() {
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {photos.map((photo) => (
-              <Card key={photo.id} className="overflow-hidden">
+            {photos.map((photo, index) => (
+              <Card key={photo.id} className="overflow-hidden group">
                 <div className="aspect-square relative bg-muted">
                   <img
                     src={photo.url}
                     alt={photo.alt}
                     className="w-full h-full object-cover"
                   />
+                  {/* Reorder buttons overlay */}
+                  <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button
+                      onClick={() => handleReorder(photo, 'up')}
+                      disabled={index === 0}
+                      className="w-7 h-7 rounded bg-white/90 hover:bg-white shadow flex items-center justify-center disabled:opacity-30"
+                      aria-label="Monter"
+                    >
+                      <ArrowUp className="h-3.5 w-3.5" />
+                    </button>
+                    <button
+                      onClick={() => handleReorder(photo, 'down')}
+                      disabled={index === photos.length - 1}
+                      className="w-7 h-7 rounded bg-white/90 hover:bg-white shadow flex items-center justify-center disabled:opacity-30"
+                      aria-label="Descendre"
+                    >
+                      <ArrowDown className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
                 </div>
                 <CardContent className="p-4 space-y-2">
                   <p className="text-sm font-medium truncate" title={photo.alt}>
                     {photo.alt}
                   </p>
                   {photo.caption && (
-                    <p
-                      className="text-xs text-muted-foreground truncate"
-                      title={photo.caption}
-                    >
+                    <p className="text-xs text-muted-foreground truncate" title={photo.caption}>
                       {photo.caption}
                     </p>
                   )}
@@ -260,20 +300,12 @@ export default function AdminPhotos() {
                     Ordre : {photo.order}
                   </p>
                   <div className="flex items-center gap-2 pt-1">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => openEditDialog(photo)}
-                      title="Modifier"
-                    >
+                    <Button variant="outline" size="sm" onClick={() => openEditDialog(photo)} title="Modifier">
                       <Pencil className="h-3 w-3 mr-1" />
                       Modifier
                     </Button>
                     <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => openDeleteDialog(photo)}
-                      title="Supprimer"
+                      variant="outline" size="sm" onClick={() => openDeleteDialog(photo)} title="Supprimer"
                       className="text-destructive hover:text-destructive border-destructive/30 hover:bg-destructive/10"
                     >
                       <Trash2 className="h-3 w-3 mr-1" />
@@ -295,11 +327,7 @@ export default function AdminPhotos() {
             <form onSubmit={handleUpdate} className="space-y-4">
               {editingPhoto && (
                 <div className="aspect-video relative rounded-md overflow-hidden bg-muted">
-                  <img
-                    src={editingPhoto.url}
-                    alt={editingPhoto.alt}
-                    className="w-full h-full object-cover"
-                  />
+                  <img src={editingPhoto.url} alt={editingPhoto.alt} className="w-full h-full object-cover" />
                 </div>
               )}
               <div className="space-y-2">
@@ -314,8 +342,7 @@ export default function AdminPhotos() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="edit-caption">
-                  Légende{' '}
-                  <span className="text-muted-foreground">(optionnel)</span>
+                  Légende <span className="text-muted-foreground">(optionnel)</span>
                 </Label>
                 <Input
                   id="edit-caption"
@@ -325,12 +352,7 @@ export default function AdminPhotos() {
                 />
               </div>
               <DialogFooter>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setEditDialogOpen(false)}
-                  disabled={saving}
-                >
+                <Button type="button" variant="outline" onClick={() => setEditDialogOpen(false)} disabled={saving}>
                   Annuler
                 </Button>
                 <Button type="submit" disabled={saving}>
@@ -347,34 +369,25 @@ export default function AdminPhotos() {
             <DialogHeader>
               <DialogTitle>Confirmer la suppression</DialogTitle>
             </DialogHeader>
-            <p className="text-sm text-muted-foreground">
-              Êtes-vous sûr de vouloir supprimer cette photo ? Cette action est
-              irréversible.
-            </p>
             {deletingPhoto && (
-              <div className="aspect-video relative rounded-md overflow-hidden bg-muted">
-                <img
-                  src={deletingPhoto.url}
-                  alt={deletingPhoto.alt}
-                  className="w-full h-full object-cover"
-                />
-              </div>
+              <>
+                <p className="text-sm text-muted-foreground">
+                  Êtes-vous sûr de vouloir supprimer cette photo ?
+                </p>
+                <div className="aspect-video relative rounded-md overflow-hidden bg-muted">
+                  <img src={deletingPhoto.url} alt={deletingPhoto.alt} className="w-full h-full object-cover" />
+                </div>
+                <p className="text-sm text-muted-foreground text-center">
+                  <strong>{deletingPhoto.alt}</strong>
+                  {deletingPhoto.caption && <> — {deletingPhoto.caption}</>}
+                </p>
+              </>
             )}
             <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setDeleteDialogOpen(false)}
-                disabled={deleting}
-              >
+              <Button type="button" variant="outline" onClick={() => setDeleteDialogOpen(false)} disabled={deleting}>
                 Annuler
               </Button>
-              <Button
-                type="button"
-                variant="destructive"
-                onClick={handleDelete}
-                disabled={deleting}
-              >
+              <Button type="button" variant="destructive" onClick={handleDelete} disabled={deleting}>
                 {deleting ? 'Suppression...' : 'Supprimer'}
               </Button>
             </DialogFooter>

@@ -6,8 +6,17 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
-import { Toaster } from 'sonner';
+import { sendContactMessage } from '@/lib/api';
 import { useScrollAnimation } from '@/hooks/useScrollAnimation';
+
+const subjects = [
+  "Demande d'information",
+  'Baptême',
+  'Mariage',
+  'Demande de messe',
+  'Visite',
+  'Autre',
+];
 
 interface ContactForm {
   name: string;
@@ -26,6 +35,7 @@ const initialForm: ContactForm = {
 export default function Contact() {
   const [form, setForm] = useState<ContactForm>(initialForm);
   const [errors, setErrors] = useState<Partial<Record<keyof ContactForm, string>>>({});
+  const [submitting, setSubmitting] = useState(false);
 
   const formRef = useScrollAnimation();
   const infoRef = useScrollAnimation();
@@ -39,19 +49,19 @@ export default function Contact() {
   function validate(): boolean {
     const newErrors: Partial<Record<keyof ContactForm, string>> = {};
 
-    if (!form.name.trim()) {
-      newErrors.name = 'Le nom est requis.';
+    if (!form.name.trim() || form.name.trim().length < 2) {
+      newErrors.name = 'Le nom doit contenir au moins 2 caractères.';
     }
     if (!form.email.trim()) {
       newErrors.email = "L'adresse e-mail est requise.";
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
       newErrors.email = "L'adresse e-mail n'est pas valide.";
     }
-    if (!form.subject.trim()) {
+    if (!form.subject) {
       newErrors.subject = 'Le sujet est requis.';
     }
-    if (!form.message.trim()) {
-      newErrors.message = 'Le message est requis.';
+    if (!form.message.trim() || form.message.trim().length < 10) {
+      newErrors.message = 'Le message doit contenir au moins 10 caractères.';
     }
 
     setErrors(newErrors);
@@ -69,7 +79,7 @@ export default function Contact() {
     }
   }
 
-  function handleSubmit(e: FormEvent) {
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault();
 
     if (!validate()) {
@@ -77,22 +87,21 @@ export default function Contact() {
       return;
     }
 
-    const subject = encodeURIComponent(form.subject);
-    const body = encodeURIComponent(
-      `Nom : ${form.name}\nE-mail : ${form.email}\n\n${form.message}`
-    );
-    const mailto = `mailto:contact@sanctuaire-tronchaye.fr?subject=${subject}&body=${body}`;
-
-    window.location.href = mailto;
-    toast.success('Votre client de messagerie va s\'ouvrir.');
-    setForm(initialForm);
-    setErrors({});
+    setSubmitting(true);
+    try {
+      await sendContactMessage(form);
+      toast.success('Votre message a été envoyé avec succès.');
+      setForm(initialForm);
+      setErrors({});
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Erreur lors de l'envoi du message.");
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (
     <div className="pt-20 md:pt-24">
-      <Toaster position="top-right" richColors />
-
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12 md:py-20">
         {/* Page heading */}
         <div className="text-center mb-16">
@@ -119,7 +128,6 @@ export default function Contact() {
               <CardContent>
                 <form onSubmit={handleSubmit} className="space-y-5" noValidate>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                    {/* Name */}
                     <div className="space-y-2">
                       <Label htmlFor="name">Nom</Label>
                       <Input
@@ -134,7 +142,6 @@ export default function Contact() {
                       )}
                     </div>
 
-                    {/* Email */}
                     <div className="space-y-2">
                       <Label htmlFor="email">E-mail</Label>
                       <Input
@@ -151,22 +158,24 @@ export default function Contact() {
                     </div>
                   </div>
 
-                  {/* Subject */}
                   <div className="space-y-2">
                     <Label htmlFor="subject">Sujet</Label>
-                    <Input
+                    <select
                       id="subject"
-                      placeholder="Objet de votre message"
                       value={form.subject}
                       onChange={(e) => handleChange('subject', e.target.value)}
-                      className={errors.subject ? 'border-destructive' : ''}
-                    />
+                      className={`flex h-10 w-full rounded-md border bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${errors.subject ? 'border-destructive' : 'border-input'}`}
+                    >
+                      <option value="">Choisir un sujet...</option>
+                      {subjects.map((s) => (
+                        <option key={s} value={s}>{s}</option>
+                      ))}
+                    </select>
                     {errors.subject && (
                       <p className="text-sm text-destructive">{errors.subject}</p>
                     )}
                   </div>
 
-                  {/* Message */}
                   <div className="space-y-2">
                     <Label htmlFor="message">Message</Label>
                     <Textarea
@@ -182,9 +191,9 @@ export default function Contact() {
                     )}
                   </div>
 
-                  <Button type="submit" className="w-full sm:w-auto">
+                  <Button type="submit" className="w-full sm:w-auto" disabled={submitting}>
                     <Send className="h-4 w-4 mr-2" />
-                    Envoyer le message
+                    {submitting ? 'Envoi en cours...' : 'Envoyer le message'}
                   </Button>
                 </form>
               </CardContent>

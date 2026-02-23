@@ -1,4 +1,4 @@
-import type { Event, Photo, User } from '@/types';
+import type { Event, Photo, User, ContactMessage } from '@/types';
 
 const API_BASE = '/api';
 
@@ -73,6 +73,32 @@ export async function updatePhoto(id: number, data: Partial<Photo>): Promise<Pho
     method: 'PUT',
     body: JSON.stringify(data),
   });
+}
+
+// Contact Messages
+export async function sendContactMessage(data: { name: string; email: string; subject: string; message: string }): Promise<ContactMessage> {
+  return fetchJSON<ContactMessage>('/contact', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function getContactMessages(): Promise<ContactMessage[]> {
+  return fetchJSON<ContactMessage[]>('/contact');
+}
+
+export async function getUnreadMessageCount(): Promise<{ count: number }> {
+  return fetchJSON<{ count: number }>('/contact/unread-count');
+}
+
+export async function markMessageAsRead(id: number): Promise<ContactMessage> {
+  return fetchJSON<ContactMessage>(`/contact/${id}/read`, {
+    method: 'PATCH',
+  });
+}
+
+export async function deleteContactMessage(id: number): Promise<void> {
+  await fetchJSON(`/contact/${id}`, { method: 'DELETE' });
 }
 
 // Auth

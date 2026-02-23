@@ -4,27 +4,35 @@ import {
   LayoutDashboard,
   Calendar,
   Camera,
+  Mail,
   ExternalLink,
   LogOut,
 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { getEvents, getPhotos, getUser, logout } from '@/lib/api';
+import { Badge } from '@/components/ui/badge';
+import { getEvents, getPhotos, getUser, getUnreadMessageCount, logout } from '@/lib/api';
+import { formatDate } from '@/lib/utils';
 import type { Event, Photo } from '@/types';
 
 const navItems = [
   { label: 'Tableau de bord', icon: LayoutDashboard, href: '/admin' },
   { label: 'Événements', icon: Calendar, href: '/admin/events' },
   { label: 'Photos', icon: Camera, href: '/admin/photos' },
+  { label: 'Messages', icon: Mail, href: '/admin/messages' },
 ];
 
 export function AdminLayout({ children }: { children: ReactNode }) {
   const location = useLocation();
   const navigate = useNavigate();
+  const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
     getUser().catch(() => {
       navigate('/admin/login');
     });
+    getUnreadMessageCount()
+      .then((data) => setUnreadCount(data.count))
+      .catch(() => {});
   }, [navigate]);
 
   async function handleLogout() {
@@ -68,6 +76,11 @@ export function AdminLayout({ children }: { children: ReactNode }) {
                   >
                     <item.icon className="h-4 w-4" />
                     {item.label}
+                    {item.href === '/admin/messages' && unreadCount > 0 && (
+                      <Badge variant="destructive" className="ml-auto text-[10px] px-1.5 py-0">
+                        {unreadCount}
+                      </Badge>
+                    )}
                   </Link>
                 </li>
               );
@@ -104,6 +117,7 @@ export function AdminLayout({ children }: { children: ReactNode }) {
 export default function AdminDashboard() {
   const [events, setEvents] = useState<Event[]>([]);
   const [photos, setPhotos] = useState<Photo[]>([]);
+  const [unreadMessages, setUnreadMessages] = useState(0);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
@@ -121,12 +135,14 @@ export default function AdminDashboard() {
       }
 
       try {
-        const [eventsData, photosData] = await Promise.all([
+        const [eventsData, photosData, msgData] = await Promise.all([
           getEvents(),
           getPhotos(),
+          getUnreadMessageCount(),
         ]);
         setEvents(eventsData);
         setPhotos(photosData);
+        setUnreadMessages(msgData.count);
       } catch {
         // Stats will show 0
       } finally {
@@ -137,9 +153,10 @@ export default function AdminDashboard() {
     fetchData();
   }, [navigate]);
 
-  const upcomingEvents = events.filter(
-    (e) => new Date(e.date) >= new Date(new Date().toDateString())
-  );
+  const upcomingEvents = events
+    .filter((e) => new Date(e.date) >= new Date(new Date().toDateString()))
+    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+    .slice(0, 5);
 
   return (
     <AdminLayout>
@@ -158,7 +175,7 @@ export default function AdminDashboard() {
         ) : (
           <>
             {/* Stats cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
                   <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -209,14 +226,64 @@ export default function AdminDashboard() {
                   </p>
                 </CardContent>
               </Card>
+
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">
+                    Messages non lus
+                  </CardTitle>
+                  <Mail className="h-5 w-5 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-3xl font-bold text-destructive">
+                    {unreadMessages}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    message{unreadMessages !== 1 ? 's' : ''} en attente
+                  </p>
+                </CardContent>
+              </Card>
             </div>
+
+            {/* Upcoming events mini-table */}
+            {upcomingEvents.length > 0 && (
+              <div>
+                <h2 className="text-xl font-semibold text-primary mb-4">
+                  Prochains événements
+                </h2>
+                <Card>
+                  <CardContent className="p-0">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b bg-muted/50">
+                          <th className="text-left p-3 text-sm font-medium text-muted-foreground">Titre</th>
+                          <th className="text-left p-3 text-sm font-medium text-muted-foreground">Date</th>
+                          <th className="text-left p-3 text-sm font-medium text-muted-foreground">Heure</th>
+                          <th className="text-left p-3 text-sm font-medium text-muted-foreground">Lieu</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {upcomingEvents.map((event) => (
+                          <tr key={event.id} className="border-b last:border-0">
+                            <td className="p-3 text-sm font-medium">{event.title}</td>
+                            <td className="p-3 text-sm text-muted-foreground">{formatDate(event.date)}</td>
+                            <td className="p-3 text-sm text-muted-foreground">{event.time}</td>
+                            <td className="p-3 text-sm text-muted-foreground">{event.location}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
 
             {/* Quick access */}
             <div>
               <h2 className="text-xl font-semibold text-primary mb-4">
                 Accès rapide
               </h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <Link to="/admin/events">
                   <Card className="hover:shadow-md transition-shadow cursor-pointer">
                     <CardContent className="flex items-center gap-4 p-6">
@@ -228,7 +295,7 @@ export default function AdminDashboard() {
                           Gérer les événements
                         </h3>
                         <p className="text-sm text-muted-foreground">
-                          Ajouter, modifier ou supprimer des événements
+                          Ajouter, modifier ou supprimer
                         </p>
                       </div>
                     </CardContent>
@@ -246,7 +313,27 @@ export default function AdminDashboard() {
                           Gérer les photos
                         </h3>
                         <p className="text-sm text-muted-foreground">
-                          Ajouter ou supprimer des photos de la galerie
+                          Galerie du sanctuaire
+                        </p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </Link>
+
+                <Link to="/admin/messages">
+                  <Card className="hover:shadow-md transition-shadow cursor-pointer">
+                    <CardContent className="flex items-center gap-4 p-6">
+                      <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10">
+                        <Mail className="h-6 w-6 text-primary" />
+                      </div>
+                      <div>
+                        <h3 className="font-semibold text-primary">
+                          Gérer les messages
+                        </h3>
+                        <p className="text-sm text-muted-foreground">
+                          {unreadMessages > 0
+                            ? `${unreadMessages} non lu${unreadMessages > 1 ? 's' : ''}`
+                            : 'Aucun message en attente'}
                         </p>
                       </div>
                     </CardContent>

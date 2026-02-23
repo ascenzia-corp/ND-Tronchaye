@@ -19,6 +19,9 @@ export default function Footer() {
               <Link to="/sacrement/bapteme" className="text-sm text-primary-foreground/80 hover:text-white transition-colors">
                 Sacrements
               </Link>
+              <Link to="/evenements" className="text-sm text-primary-foreground/80 hover:text-white transition-colors">
+                Événements
+              </Link>
               <Link to="/contact" className="text-sm text-primary-foreground/80 hover:text-white transition-colors">
                 Contact
               </Link>

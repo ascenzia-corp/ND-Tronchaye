@@ -8,6 +8,7 @@ import { seed } from './db/seed.js';
 import authRoutes from './routes/auth.js';
 import eventsRoutes from './routes/events.js';
 import photosRoutes from './routes/photos.js';
+import contactRoutes from './routes/contact.js';
 import { requireAuth } from './middleware/auth.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -41,6 +42,7 @@ seed();
 app.use('/api/auth', authRoutes);
 app.use('/api/events', eventsRoutes);
 app.use('/api/photos', photosRoutes);
+app.use('/api/contact', contactRoutes);
 
 // User info endpoint
 app.get('/api/user', requireAuth, (req, res) => {

@@ -49,5 +49,22 @@ function initializeSchema(db: Database.Database): void {
       role TEXT NOT NULL DEFAULT 'admin',
       createdAt TEXT NOT NULL DEFAULT (datetime('now'))
     );
+
+    CREATE TABLE IF NOT EXISTS contactMessages (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      email TEXT NOT NULL,
+      subject TEXT NOT NULL,
+      message TEXT NOT NULL,
+      isRead INTEGER NOT NULL DEFAULT 0,
+      createdAt TEXT NOT NULL DEFAULT (datetime('now'))
+    );
   `);
+
+  // Add eventType column if it doesn't exist
+  try {
+    db.exec(`ALTER TABLE events ADD COLUMN eventType TEXT NOT NULL DEFAULT 'regular'`);
+  } catch {
+    // Column already exists
+  }
 }
