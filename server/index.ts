@@ -15,10 +15,22 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = process.env.PORT || 3000;
 const isProduction = process.env.NODE_ENV === 'production';
 
+const FRONTEND_URL = process.env.FRONTEND_URL; // ex: https://nd-tronchaye.vercel.app
+
 const app = express();
 
+// Trust Railway's reverse proxy so secure cookies work
+if (isProduction) {
+  app.set('trust proxy', 1);
+}
+
 // Middleware
-app.use(cors({ origin: true, credentials: true }));
+app.use(
+  cors({
+    origin: isProduction && FRONTEND_URL ? FRONTEND_URL : true,
+    credentials: true,
+  })
+);
 app.use(express.json());
 app.use(
   session({
@@ -29,7 +41,7 @@ app.use(
       secure: isProduction,
       httpOnly: true,
       maxAge: 24 * 60 * 60 * 1000, // 24 hours
-      sameSite: 'lax',
+      sameSite: isProduction ? 'none' : 'lax', // 'none' requis pour cross-origin
     },
   })
 );
