@@ -145,7 +145,7 @@ export default function About() {
                 <li className="flex items-start gap-3">
                   <span className="mt-1.5 h-2 w-2 rounded-full bg-sanctuary-accent shrink-0" />
                   <span className="leading-relaxed">
-                    Organisation d'événements culturels et spirituels : concerts de musique sacrée,
+                    Organisation d'événements culturels : concerts de musique sacrée,
                     conférences, expositions et journées du patrimoine.
                   </span>
                 </li>
