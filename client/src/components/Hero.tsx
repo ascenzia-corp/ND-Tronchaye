@@ -82,7 +82,7 @@ export default function Hero() {
               variant="outline"
               size="lg"
               onClick={() => scrollTo('bienvenue')}
-              className="text-base border-white/30 text-white hover:bg-white/10 hover:text-white"
+              className="text-base border-white text-white bg-white/15 hover:bg-white/25 hover:text-white"
             >
               En savoir plus
             </Button>
