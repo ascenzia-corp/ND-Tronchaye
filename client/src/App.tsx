@@ -11,6 +11,7 @@ import Index from '@/pages/Index';
 const Histoire = lazy(() => import('@/pages/Histoire'));
 const About = lazy(() => import('@/pages/About'));
 const Contact = lazy(() => import('@/pages/Contact'));
+const Evenements = lazy(() => import('@/pages/Evenements'));
 const EventDetail = lazy(() => import('@/pages/EventDetail'));
 const NotFound = lazy(() => import('@/pages/NotFound'));
 
@@ -20,12 +21,14 @@ const Confession = lazy(() => import('@/pages/sacrements/Confession'));
 const Communion = lazy(() => import('@/pages/sacrements/Communion'));
 const Confirmation = lazy(() => import('@/pages/sacrements/Confirmation'));
 const Mariage = lazy(() => import('@/pages/sacrements/Mariage'));
+const Onction = lazy(() => import('@/pages/sacrements/Onction'));
 
 // Admin
 const AdminLogin = lazy(() => import('@/pages/admin/AdminLogin'));
 const AdminDashboard = lazy(() => import('@/pages/admin/AdminDashboard'));
 const AdminEvents = lazy(() => import('@/pages/admin/AdminEvents'));
 const AdminPhotos = lazy(() => import('@/pages/admin/AdminPhotos'));
+const AdminMessages = lazy(() => import('@/pages/admin/AdminMessages'));
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -94,6 +97,14 @@ export default function App() {
             }
           />
           <Route
+            path="/evenements"
+            element={
+              <PublicLayout>
+                <Evenements />
+              </PublicLayout>
+            }
+          />
+          <Route
             path="/event/:eventId"
             element={
               <PublicLayout>
@@ -143,12 +154,21 @@ export default function App() {
               </PublicLayout>
             }
           />
+          <Route
+            path="/sacrement/onction"
+            element={
+              <PublicLayout>
+                <Onction />
+              </PublicLayout>
+            }
+          />
 
           {/* Admin routes (no public header/footer) */}
           <Route path="/admin/login" element={<AdminLogin />} />
           <Route path="/admin" element={<AdminDashboard />} />
           <Route path="/admin/events" element={<AdminEvents />} />
           <Route path="/admin/photos" element={<AdminPhotos />} />
+          <Route path="/admin/messages" element={<AdminMessages />} />
 
           {/* 404 */}
           <Route

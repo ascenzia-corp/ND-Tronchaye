@@ -1,38 +1,49 @@
-import { Link } from 'react-router-dom';
-import { Droplets, HeartHandshake, Wheat, Flame, Heart } from 'lucide-react';
-import { Card, CardContent } from '@/components/ui/card';
+import { Droplets, HeartHandshake, Wheat, Flame, Heart, Hand } from 'lucide-react';
+import SacramentCard from '@/components/SacramentCard';
 import { useScrollAnimation } from '@/hooks/useScrollAnimation';
 
 const sacraments = [
   {
     title: 'Baptême',
-    description: 'Porter de l\'eau vive et renaître en Christ par le sacrement du Baptême.',
+    description: "Porter de l'eau vive et renaître en Christ par le sacrement du Baptême.",
     icon: Droplets,
     href: '/sacrement/bapteme',
+    image: '/images/sacrements/bapteme.webp',
   },
   {
     title: 'Confession',
     description: 'Recevoir le pardon de Dieu dans le sacrement de la réconciliation.',
     icon: HeartHandshake,
     href: '/sacrement/confession',
+    image: '/images/sacrements/confession.webp',
   },
   {
     title: 'Communion',
-    description: 'Recevoir le Corps et le Sang du Christ dans l\'Eucharistie.',
+    description: "Recevoir le Corps et le Sang du Christ dans l'Eucharistie.",
     icon: Wheat,
     href: '/sacrement/communion',
+    image: '/images/sacrements/communion.webp',
   },
   {
     title: 'Confirmation',
-    description: 'Recevoir le sceau de l\'Esprit Saint pour fortifier sa foi.',
+    description: "Recevoir le sceau de l'Esprit Saint pour fortifier sa foi.",
     icon: Flame,
     href: '/sacrement/confirmation',
+    image: '/images/sacrements/confirmation.webp',
   },
   {
     title: 'Mariage',
-    description: 'S\'engager devant Dieu dans l\'amour fidèle et indissoluble.',
+    description: "S'engager devant Dieu dans l'amour fidèle et indissoluble.",
     icon: Heart,
     href: '/sacrement/mariage',
+    image: '/images/sacrements/mariage.webp',
+  },
+  {
+    title: 'Onction des malades',
+    description: 'Recevoir la grâce de Dieu dans la maladie et la souffrance.',
+    icon: Hand,
+    href: '/sacrement/onction',
+    image: '/images/sacrements/onction.webp',
   },
 ];
 
@@ -52,23 +63,9 @@ export default function SacramentsSection() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 md:gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {sacraments.map((sacrement) => (
-            <Link key={sacrement.href} to={sacrement.href}>
-              <Card className="h-full hover:shadow-lg transition-shadow duration-200 group cursor-pointer border-border/50">
-                <CardContent className="p-6 text-center">
-                  <div className="w-14 h-14 rounded-full bg-sanctuary-accent/10 flex items-center justify-center mx-auto mb-4 group-hover:bg-sanctuary-accent/20 transition-colors">
-                    <sacrement.icon className="h-7 w-7 text-sanctuary-accent" />
-                  </div>
-                  <h3 className="font-serif text-lg font-semibold text-foreground mb-2">
-                    {sacrement.title}
-                  </h3>
-                  <p className="text-sm text-muted-foreground">
-                    {sacrement.description}
-                  </p>
-                </CardContent>
-              </Card>
-            </Link>
+            <SacramentCard key={sacrement.href} {...sacrement} />
           ))}
         </div>
       </div>

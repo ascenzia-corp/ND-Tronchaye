@@ -37,7 +37,7 @@ router.get('/:id', (req, res) => {
 
 // Admin: create event
 router.post('/', requireAuth, (req, res) => {
-  const { title, date, time, location, description, isSpecial, imageUrl } = req.body;
+  const { title, date, time, location, description, isSpecial, imageUrl, eventType } = req.body;
   if (!title || !date || !time || !location || !description) {
     res.status(400).json({ error: 'Champs requis manquants' });
     return;
@@ -45,9 +45,9 @@ router.post('/', requireAuth, (req, res) => {
   const db = getDb();
   const result = db
     .prepare(
-      'INSERT INTO events (title, date, time, location, description, isSpecial, imageUrl) VALUES (?, ?, ?, ?, ?, ?, ?)'
+      'INSERT INTO events (title, date, time, location, description, isSpecial, imageUrl, eventType) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
     )
-    .run(title, date, time, location, description, isSpecial ? 1 : 0, imageUrl || null);
+    .run(title, date, time, location, description, isSpecial ? 1 : 0, imageUrl || null, eventType || 'regular');
 
   const event = db.prepare('SELECT * FROM events WHERE id = ?').get(result.lastInsertRowid);
   res.status(201).json(mapEvent(event as Record<string, unknown>));
@@ -64,8 +64,9 @@ router.put('/:id', requireAuth, (req, res) => {
     return;
   }
 
+  const { eventType } = req.body;
   db.prepare(
-    `UPDATE events SET title = ?, date = ?, time = ?, location = ?, description = ?, isSpecial = ?, imageUrl = ?, updatedAt = datetime('now') WHERE id = ?`
+    `UPDATE events SET title = ?, date = ?, time = ?, location = ?, description = ?, isSpecial = ?, imageUrl = ?, eventType = ?, updatedAt = datetime('now') WHERE id = ?`
   ).run(
     title ?? (existing as Record<string, unknown>).title,
     date ?? (existing as Record<string, unknown>).date,
@@ -74,6 +75,7 @@ router.put('/:id', requireAuth, (req, res) => {
     description ?? (existing as Record<string, unknown>).description,
     isSpecial !== undefined ? (isSpecial ? 1 : 0) : (existing as Record<string, unknown>).isSpecial,
     imageUrl !== undefined ? imageUrl : (existing as Record<string, unknown>).imageUrl,
+    eventType ?? (existing as Record<string, unknown>).eventType ?? 'regular',
     req.params.id
   );
 

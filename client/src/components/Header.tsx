@@ -15,9 +15,10 @@ const navItems = [
       { label: 'Communion', href: '/sacrement/communion' },
       { label: 'Confirmation', href: '/sacrement/confirmation' },
       { label: 'Mariage', href: '/sacrement/mariage' },
+      { label: 'Onction des malades', href: '/sacrement/onction' },
     ],
   },
-  { label: 'Événements', href: '/#evenements' },
+  { label: 'Événements', href: '/evenements' },
   { label: 'Contact', href: '/contact' },
 ];
 

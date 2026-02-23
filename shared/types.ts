@@ -1,3 +1,5 @@
+export type EventType = 'regular' | 'special' | 'liturgical' | 'cultural';
+
 export interface Event {
   id: number;
   title: string;
@@ -7,6 +9,7 @@ export interface Event {
   description: string;
   isSpecial: boolean;
   imageUrl?: string;
+  eventType: EventType;
   createdAt: string;
   updatedAt: string;
 }
@@ -25,6 +28,16 @@ export interface User {
   email: string;
   name: string;
   role: 'admin';
+}
+
+export interface ContactMessage {
+  id: number;
+  name: string;
+  email: string;
+  subject: string;
+  message: string;
+  isRead: boolean;
+  createdAt: string;
 }
 
 export interface ApiResponse<T> {
