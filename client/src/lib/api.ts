@@ -1,6 +1,9 @@
 import type { Event, Photo, User, ContactMessage } from '@/types';
 
-const API_BASE = '/api';
+// En dev : '/api' (proxy Vite). En prod : URL Railway (ex: https://xxx.railway.app/api)
+const API_BASE = import.meta.env.VITE_API_URL
+  ? `${import.meta.env.VITE_API_URL}/api`
+  : '/api';
 
 async function fetchJSON<T>(url: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`${API_BASE}${url}`, {
