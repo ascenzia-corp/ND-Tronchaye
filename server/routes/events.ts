@@ -14,6 +14,16 @@ router.get('/', (_req, res) => {
   res.json(events);
 });
 
+// Admin: list all events (including past)
+router.get('/admin/all', requireAuth, (_req, res) => {
+  const db = getDb();
+  const events = db
+    .prepare('SELECT * FROM events ORDER BY date ASC')
+    .all()
+    .map(mapEvent);
+  res.json(events);
+});
+
 // Public: list special events
 router.get('/special/all', (_req, res) => {
   const db = getDb();

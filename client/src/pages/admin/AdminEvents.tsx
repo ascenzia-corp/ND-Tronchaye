@@ -15,7 +15,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog';
-import { getEvents, createEvent, updateEvent, deleteEvent, getUser } from '@/lib/api';
+import { getAllEvents, createEvent, updateEvent, deleteEvent, getUser } from '@/lib/api';
 import type { Event, EventType } from '@/types';
 
 const eventTypeLabels: Record<EventType, string> = {
@@ -88,7 +88,7 @@ export default function AdminEvents() {
 
   async function fetchEvents() {
     try {
-      const data = await getEvents();
+      const data = await getAllEvents();
       setEvents(data);
     } catch {
       toast.error('Erreur lors du chargement des événements');

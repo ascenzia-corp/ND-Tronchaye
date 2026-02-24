@@ -23,6 +23,10 @@ export async function getEvents(): Promise<Event[]> {
   return fetchJSON<Event[]>('/events');
 }
 
+export async function getAllEvents(): Promise<Event[]> {
+  return fetchJSON<Event[]>('/events/admin/all');
+}
+
 export async function getSpecialEvents(): Promise<Event[]> {
   return fetchJSON<Event[]>('/events/special/all');
 }
